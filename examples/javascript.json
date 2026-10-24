@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "id": "javascript-order-total",
+  "name": "JavaScript \u00b7 Order total",
+  "description": "Filter order lines, calculate totals, and apply a VIP discount in an isolated browser function.",
+  "inputSchema": {
+    "items": {
+      "type": "array",
+      "required": true,
+      "label": "Order items"
+    },
+    "customerTier": {
+      "type": "string",
+      "label": "Customer tier"
+    }
+  },
+  "stages": [
+    {
+      "id": "calculate",
+      "name": "Calculate order total",
+      "kind": "javascript",
+      "script": "const lines = input.items\n  .filter(item => item.quantity > 0)\n  .map(item => ({\n    sku: item.sku,\n    quantity: item.quantity,\n    lineTotal: Math.round(item.quantity * item.unitPrice * 100) / 100\n  }));\nconst subtotal = lines.reduce((sum, line) => sum + line.lineTotal, 0);\nconst discount = input.customerTier === \"vip\" ? 0.1 : 0;\nreturn {\n  total: Math.round(subtotal * (1 - discount) * 100) / 100,\n  itemCount: lines.length,\n  lines\n};",
+      "outputs": {
+        "total": {
+          "type": "number",
+          "required": true
+        },
+        "itemCount": {
+          "type": "number",
+          "required": true
+        },
+        "lines": {
+          "type": "array",
+          "required": true
+        }
+      },
+      "explanation": "Filter zero-quantity lines, calculate line totals, and apply a 10% VIP discount."
+    },
+    {
+      "id": "approve",
+      "name": "Approve order",
+      "kind": "decision",
+      "outcome": "PASS",
+      "explanation": "The calculated order total is at most 1000."
+    },
+    {
+      "id": "review",
+      "name": "Review order",
+      "kind": "decision",
+      "outcome": "FLAG",
+      "explanation": "The calculated order total exceeds 1000."
+    }
+  ],
+  "edges": [
+    {
+      "id": "under-limit",
+      "from": "calculate",
+      "to": "approve",
+      "label": "Within order limit",
+      "rules": {
+        "match": "all",
+        "clauses": [
+          {
+            "field": "stages.calculate.total",
+            "operator": "lte",
+            "value": 1000
+          }
+        ]
+      }
+    },
+    {
+      "id": "over-limit",
+      "from": "calculate",
+      "to": "review",
+      "label": "Exceeds order limit",
+      "rules": {
+        "match": "all",
+        "clauses": [
+          {
+            "field": "stages.calculate.total",
+            "operator": "gt",
+            "value": 1000
+          }
+        ]
+      }
+    }
+  ],
+  "exampleInput": {
+    "items": [
+      {
+        "sku": "A",
+        "quantity": 2,
+        "unitPrice": 12
+      },
+      {
+        "sku": "B",
+        "quantity": 3,
+        "unitPrice": 5
+      },
+      {
+        "sku": "C",
+        "quantity": 0,
+        "unitPrice": 100
+      }
+    ],
+    "customerTier": "vip"
+  }
+}

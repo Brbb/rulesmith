@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "id": "eligibility",
+  "name": "Applicant eligibility",
+  "description": "Approve applicants who meet the age and income requirements; send other complete applications for review.",
+  "inputSchema": {
+    "age": {
+      "type": "number",
+      "required": true,
+      "label": "Applicant age"
+    },
+    "monthlyIncome": {
+      "type": "number",
+      "required": true,
+      "label": "Monthly income"
+    }
+  },
+  "exampleInput": {
+    "age": 25,
+    "monthlyIncome": 5200
+  },
+  "stages": [
+    {
+      "id": "eligibility",
+      "name": "Check eligibility",
+      "kind": "switch",
+      "explanation": "Choose the first matching case, then use the review fallback."
+    },
+    {
+      "id": "approve",
+      "name": "Approve application",
+      "kind": "decision",
+      "outcome": "PASS",
+      "explanation": "The applicant meets the configured eligibility requirements."
+    },
+    {
+      "id": "review",
+      "name": "Human review",
+      "kind": "decision",
+      "outcome": "FLAG",
+      "explanation": "Complete application does not meet the automatic approval requirements."
+    }
+  ],
+  "edges": [
+    {
+      "id": "eligible",
+      "from": "eligibility",
+      "to": "approve",
+      "label": "Meets eligibility",
+      "order": 1,
+      "rules": {
+        "match": "all",
+        "clauses": [
+          {
+            "field": "input.age",
+            "operator": "gte",
+            "value": 21
+          },
+          {
+            "field": "input.monthlyIncome",
+            "operator": "gt",
+            "value": 4000
+          }
+        ]
+      }
+    },
+    {
+      "id": "otherwise",
+      "from": "eligibility",
+      "to": "review",
+      "label": "Needs review",
+      "default": true
+    }
+  ]
+}

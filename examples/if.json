@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "id": "if-amount",
+  "name": "IF · Amount check",
+  "description": "One condition belongs to an IF block; its connections only select destinations.",
+  "inputSchema": { "amount": { "type": "number", "required": true } },
+  "stages": [
+    { "id": "amount-check", "name": "Within limit", "kind": "if", "explanation": "Check the amount limit.", "cases": [
+      { "id": "within", "label": "True", "rules": { "match": "all", "clauses": [{ "field": "input.amount", "operator": "lte", "value": 1000 }] } },
+      { "id": "outside", "label": "False", "default": true }
+    ] },
+    { "id": "approve", "name": "Approve", "kind": "decision", "outcome": "PASS", "explanation": "The amount is within the limit." },
+    { "id": "review", "name": "Review", "kind": "decision", "outcome": "FLAG", "explanation": "The amount exceeds the limit." }
+  ],
+  "edges": [
+    { "id": "within", "from": "amount-check", "to": "approve" },
+    { "id": "outside", "from": "amount-check", "to": "review" }
+  ],
+  "exampleInput": { "amount": 500 }
+}

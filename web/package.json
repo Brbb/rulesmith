@@ -1,0 +1,35 @@
+{
+  "name": "policy-studio",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "next build --webpack",
+    "start": "next start --hostname 127.0.0.1",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc --module commonjs --moduleResolution node --target ES2022 --esModuleInterop --skipLibCheck --outDir .test-build lib/completions.ts lib/completions.test.ts lib/rules.ts lib/rules.test.ts lib/audit.ts lib/audit.test.ts lib/policy-outline.ts lib/policy-outline.test.ts lib/workspace.ts lib/workspace.test.ts lib/workspace-tree.ts lib/workspace-tree.test.ts lib/routing.ts lib/routing.test.ts lib/canvas-actions.ts lib/canvas-actions.test.ts lib/payload-form.ts lib/payload-form.test.ts && node --test .test-build/*.test.js && npm run test:sandbox",
+    "test:sandbox": "tsc --module es2022 --moduleResolution bundler --target ES2022 --esModuleInterop --skipLibCheck --outDir .sandbox-tests lib/sandbox-core.ts lib/sandbox-core.test.ts && node -e 'require(\"fs\").writeFileSync(\".sandbox-tests/package.json\", JSON.stringify({type:\"module\"}))' && node --test .sandbox-tests/*.test.js"
+  },
+  "dependencies": {
+    "@jitl/quickjs-singlefile-browser-release-sync": "^0.32.0",
+    "@radix-ui/react-slot": "^1.2.3",
+    "@tailwindcss/postcss": "^4.1.0",
+    "@xyflow/react": "^12.9.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.468.0",
+    "next": "^16.0.0",
+    "quickjs-emscripten-core": "^0.32.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "tailwind-merge": "^3.3.1",
+    "tailwindcss": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "prettier": "^3.9.10",
+    "typescript": "^5.9.0"
+  }
+}

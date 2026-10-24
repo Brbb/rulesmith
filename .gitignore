@@ -1,0 +1,15 @@
+web/node_modules/
+web/.next/
+web/*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.DS_Store
+bin/
+web/.test-build/
+
+web/.sandbox-tests/
+
+# Local design and regression captures; curated images live in docs/screenshots.
+/studio-*.png
+/studio-*.jpg

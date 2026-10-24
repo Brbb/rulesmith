@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "id": "contract",
+  "name": "Document \u00b7 Contract review",
+  "description": "Route structured contract evidence into approval, human review, or insufficient evidence.",
+  "inputSchema": {
+    "vendor": {
+      "type": "string",
+      "required": true
+    },
+    "value": {
+      "type": "number",
+      "required": true
+    },
+    "hasSignature": {
+      "type": "boolean",
+      "required": true
+    },
+    "hasLiabilityCap": {
+      "type": "boolean",
+      "required": true
+    },
+    "evidenceComplete": {
+      "type": "boolean",
+      "required": true
+    }
+  },
+  "stages": [
+    {
+      "id": "assess",
+      "name": "Assess contract",
+      "kind": "transform",
+      "inputs": {
+        "vendor": {
+          "type": "string",
+          "required": true
+        },
+        "value": {
+          "type": "number",
+          "required": true
+        },
+        "hasSignature": {
+          "type": "boolean",
+          "required": true
+        },
+        "hasLiabilityCap": {
+          "type": "boolean",
+          "required": true
+        },
+        "evidenceComplete": {
+          "type": "boolean",
+          "required": true
+        }
+      },
+      "outputs": {
+        "complete": {
+          "type": "boolean",
+          "required": true
+        },
+        "compliant": {
+          "type": "boolean",
+          "required": true
+        }
+      },
+      "expressions": {
+        "complete": "input.evidenceComplete",
+        "compliant": "input.hasSignature && input.hasLiabilityCap && input.value <= 50000"
+      },
+      "explanation": "Evaluate the declared evidence against the policy thresholds."
+    },
+    {
+      "id": "approve",
+      "name": "Approve",
+      "kind": "decision",
+      "outcome": "PASS",
+      "explanation": "Complete evidence, signed contract, liability cap present, and value at or below 50,000."
+    },
+    {
+      "id": "review",
+      "name": "Review required",
+      "kind": "decision",
+      "outcome": "FLAG",
+      "explanation": "Evidence is complete, but the contract needs human review: signature, liability cap, or value threshold failed."
+    },
+    {
+      "id": "unknown",
+      "name": "Insufficient evidence",
+      "kind": "decision",
+      "outcome": "UNKNOWN",
+      "explanation": "The supplied contract evidence is incomplete."
+    }
+  ],
+  "edges": [
+    {
+      "id": "assess-approve",
+      "from": "assess",
+      "to": "approve",
+      "condition": "stages.assess.complete && stages.assess.compliant",
+      "label": "Meets contract requirements"
+    },
+    {
+      "id": "assess-review",
+      "from": "assess",
+      "to": "review",
+      "condition": "stages.assess.complete && !stages.assess.compliant",
+      "label": "Needs human review"
+    },
+    {
+      "id": "assess-unknown",
+      "from": "assess",
+      "to": "unknown",
+      "condition": "!stages.assess.complete",
+      "label": "Evidence incomplete"
+    }
+  ],
+  "exampleInput": {
+    "vendor": "Acme Studio",
+    "value": 24000,
+    "hasSignature": true,
+    "hasLiabilityCap": true,
+    "evidenceComplete": true
+  }
+}

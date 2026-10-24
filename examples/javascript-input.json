@@ -1,0 +1,20 @@
+{
+  "items": [
+    {
+      "sku": "A",
+      "quantity": 2,
+      "unitPrice": 12
+    },
+    {
+      "sku": "B",
+      "quantity": 3,
+      "unitPrice": 5
+    },
+    {
+      "sku": "C",
+      "quantity": 0,
+      "unitPrice": 100
+    }
+  ],
+  "customerTier": "vip"
+}

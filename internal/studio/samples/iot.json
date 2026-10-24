@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "id": "iot",
+  "name": "IoT \u00b7 Cold-chain monitor",
+  "description": "Evaluate a structured sensor reading before accepting a shipment.",
+  "inputSchema": {
+    "deviceId": {
+      "type": "string",
+      "required": true
+    },
+    "temperature": {
+      "type": "number",
+      "required": true
+    },
+    "battery": {
+      "type": "number",
+      "required": true
+    },
+    "ageMinutes": {
+      "type": "number",
+      "required": true
+    }
+  },
+  "stages": [
+    {
+      "id": "telemetry",
+      "name": "Assess telemetry",
+      "kind": "transform",
+      "inputs": {
+        "deviceId": {
+          "type": "string",
+          "required": true
+        },
+        "temperature": {
+          "type": "number",
+          "required": true
+        },
+        "battery": {
+          "type": "number",
+          "required": true
+        },
+        "ageMinutes": {
+          "type": "number",
+          "required": true
+        }
+      },
+      "outputs": {
+        "fresh": {
+          "type": "boolean",
+          "required": true
+        },
+        "safe": {
+          "type": "boolean",
+          "required": true
+        }
+      },
+      "expressions": {
+        "fresh": "input.ageMinutes >= 0 && input.ageMinutes <= 15",
+        "safe": "input.temperature >= 2 && input.temperature <= 8 && input.battery >= 20"
+      },
+      "explanation": "Evaluate the declared evidence against the policy thresholds."
+    },
+    {
+      "id": "accept",
+      "name": "Approve",
+      "kind": "decision",
+      "outcome": "PASS",
+      "explanation": "Fresh reading, temperature between 2\u20138 \u00b0C, and battery at least 20%."
+    },
+    {
+      "id": "alert",
+      "name": "Review required",
+      "kind": "decision",
+      "outcome": "FLAG",
+      "explanation": "Fresh reading indicates a temperature or battery threshold breach."
+    },
+    {
+      "id": "unknown",
+      "name": "Insufficient evidence",
+      "kind": "decision",
+      "outcome": "UNKNOWN",
+      "explanation": "Sensor reading is stale or its age is invalid."
+    }
+  ],
+  "edges": [
+    {
+      "id": "telemetry-accept",
+      "from": "telemetry",
+      "to": "accept",
+      "condition": "stages.telemetry.fresh && stages.telemetry.safe",
+      "label": "Safe reading"
+    },
+    {
+      "id": "telemetry-alert",
+      "from": "telemetry",
+      "to": "alert",
+      "condition": "stages.telemetry.fresh && !stages.telemetry.safe",
+      "label": "Threshold breached"
+    },
+    {
+      "id": "telemetry-unknown",
+      "from": "telemetry",
+      "to": "unknown",
+      "condition": "!stages.telemetry.fresh",
+      "label": "Reading is stale"
+    }
+  ],
+  "exampleInput": {
+    "deviceId": "SENSOR-042",
+    "temperature": 4.2,
+    "battery": 86,
+    "ageMinutes": 2
+  }
+}
