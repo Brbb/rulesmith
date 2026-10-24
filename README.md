@@ -8,7 +8,7 @@ A local policy studio with conversational AI authoring, a visual editor, and a d
 
 Next.js · React Flow · Tailwind · Go · Expr · QuickJS
 
-[Quick start](#quick-start) · [Product tour](#product-tour) · [Examples](#examples) · [Technical guide](docs/guide.md)
+[Quick start](#quick-start) · [Product tour](#product-tour) · [Examples](#examples) · [Integration](#integrate-with-your-application) · [Technical guide](docs/guide.md)
 
 </div>
 
@@ -111,6 +111,93 @@ make api
 Use an OpenAI-compatible Chat Completions provider with JSON-object response support. The base URL is the API root; Rulesmith appends `/chat/completions`. Keys stay in the backend process. The provider receives the current policy, pending draft, conversation, test input, and relevant run context.
 
 See [.env.example](.env.example) for configuration. The server does **not** automatically load `.env`; export variables before starting it. Provider failures are surfaced explicitly. AI helps author and explain policies; it does not decide the result of Expr execution.
+
+## Integrate with your application
+
+For document processing, your application owns the extraction step and calls Rulesmith with **structured JSON plus the complete workflow definition**:
+
+```text
+Your application → PDF/text extraction → structured evidence
+                                               ↓
+Exported workflow JSON ─────────────────→ Rulesmith API → outcome + explanation + trace
+```
+
+There is no server-side policy registry yet: saving a workflow in the studio saves it in that browser, not as a remotely callable policy ID. Export the definition and keep its version in your application. `POST /api/evaluate` is stateless and accepts `{policy, input}` on each call.
+
+### JavaScript integration example
+
+Start the API with `make api`, then run this dependency-free Node.js example from the repository root:
+
+```sh
+node examples/integrate.mjs
+```
+
+[examples/integrate.mjs](examples/integrate.mjs) loads the bundled contract definition and submits example evidence. Replace the definition with your exported workflow and `input` with the output of your own extraction pipeline:
+
+```js
+import { readFile } from "node:fs/promises";
+
+// Use an exported workflow, or the bundled contract example.
+const policy = JSON.parse(
+  await readFile(new URL("./contract.json", import.meta.url), "utf8"),
+);
+
+// Your application supplies structured evidence after its own PDF/OCR extraction.
+// These are example values, not data extracted by Rulesmith.
+const input = {
+  vendor: "Example Ltd",
+  value: 72000,
+  hasSignature: true,
+  hasLiabilityCap: true,
+  evidenceComplete: true,
+};
+
+const api = (process.env.POLICY_API_URL || "http://127.0.0.1:8080").replace(/\/$/, "");
+const response = await fetch(`${api}/api/evaluate`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ policy, input }),
+  signal: AbortSignal.timeout(10000),
+});
+if (!response.ok) {
+  throw new Error(`Rulesmith HTTP ${response.status}: ${await response.text()}`);
+}
+
+// HTTP 200 includes policy rejection, missing evidence, and execution failures.
+// Inspect outcome rather than treating response.ok as an approval.
+const result = await response.json();
+console.log(JSON.stringify(result, null, 2));
+if (result.outcome === "EXECUTION_ERROR") process.exitCode = 2;
+```
+
+This example returns **FLAG** because 72,000 exceeds the contract's 50,000 limit. The response contains `outcome`, `explanation`, and `trace`. `POLICY_API_URL` can override the local API root. The same route is proxied through the studio at `http://127.0.0.1:3000/api/evaluate`.
+
+Do not turn an extraction failure into `false`: “could not establish whether a signature exists” is different from “signature absent.” Preserve uncertainty in your extraction pipeline and map it to evidence fields your workflow explicitly checks. In this sample, set `evidenceComplete: false` when evidence is unresolved; omitting a required input also produces **UNKNOWN**.
+
+The example uses an Expr-only workflow. The plain HTTP endpoint does not execute browser Code blocks; those need the studio's browser-assisted executor or a Go embedder's isolated executor. API requests are limited to **1 MiB**. The default API is for local use and has no authentication; see [the technical guide](docs/guide.md#http-api) for the full contract.
+
+### Document and integration support
+
+**(planned)** means the capability is not implemented. These are possible extensions, with no promised delivery date. Connecting an AI provider does not enable file ingestion by itself.
+
+| Capability | Status | What happens today / intended extension |
+| --- | --- | --- |
+| Evaluate JSON through HTTP | **Available** | Send the full workflow and structured input to `POST /api/evaluate`; receive the outcome and trace. |
+| Evaluate JSON without HTTP | **Available** | Use the Go CLI or embed `pkg/workflow` in your application. |
+| Import an exported workflow JSON file | **Available** | Import it into the studio, review/edit it, and run it against the Tests payload. This imports rules, not a source document. |
+| Enter test evidence in a form or JSON | **Available** | Add nested fields in Tests or paste JSON; save cases with expected outcomes. |
+| Generate or refine rules from a natural-language description | **Available** | Use AI chat with a configured provider, then review and apply the draft. The no-key guided demo supports selected examples. |
+| Extract a PDF externally, then evaluate its JSON | **Available through your application** | Your PDF parser, OCR service, or AI extraction tool produces evidence matching the workflow's input contract; the integration above evaluates it. |
+| Run JavaScript transformations | **Available in the browser** | Code blocks run in the studio's isolated sandbox; the ordinary Go/HTTP runtime does not execute them. |
+| Upload a PDF and run a workflow against it | **(planned)** | An integrated upload → extraction → evidence review → evaluation flow. No PDF upload/extraction UI exists today. |
+| Send a PDF as an HTTP attachment | **(planned)** | A document-ingestion endpoint accepting multipart uploads or encoded file bytes. Current endpoints accept JSON contracts, not document attachments. |
+| Send a remote PDF URL for processing | **(planned)** | A controlled document-fetching and extraction path. The API currently does not fetch URLs or interpret a URL string as a document. |
+| Direct PDF processing with AI | **(planned)** | Extract evidence from document pages through a configured model; preserve uncertain fields for review. The current AI adapter sends policy/chat JSON, not PDF files. |
+| Process scanned PDFs with built-in OCR | **(planned)** | OCR and page-layout extraction before producing structured evidence. Supply OCR results externally today. |
+| Turn an uploaded policy PDF into executable rules | **(planned)** | Propose rules, exceptions, and input fields from a policy document, with human review before applying them. Use a text description in chat today. |
+| Attach page citations and extraction confidence to a decision | **(planned)** | Link extracted fields and proposed rules to source passages. Current traces record evaluation, not document extraction provenance. |
+| Run a saved policy by ID/version over HTTP | **(planned)** | A persistent policy registry and version lookup. Supply the complete definition in every request today. |
+| Batch document uploads or asynchronous document jobs | **(planned)** | Queue documents, track extraction/evaluation progress, and retrieve results. Saved test cases can run JSON cases today; they are not a document-processing queue. |
 
 ## Run without the editor
 
